@@ -1,109 +1,96 @@
-# AUTISM_python
-AUTISM_python
-Autism Spectrum Disorder — Early Detection Model
-AI-driven screening support tool for early ASD identification
-![Python](https://img.shields.io/badge/Python-3.8+-blue) ![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-orange) ![Status](https://img.shields.io/badge/Status-In%20Progress-yellow)
+# AQ-10 Autism Screening Data: What Machine Learning Can and Can't Learn
 
+A re-analysis of the UCI *Autism Screening Adult* dataset (704 adults who completed the AQ-10 questionnaire). It finds that the dataset's ASD label **is** the questionnaire's scoring rule, so "predicting autism" from it is circular. It then asks two questions the data *can* answer: how short a screen can be without losing sensitivity, and whether background factors relate to a positive screen.
 
-Overview
-This project builds a machine learning model to support early detection of Autism Spectrum Disorder (ASD) using behavioral screening data. The goal is to simulate a clinical decision-support tool that can assist in identifying individuals at risk and prioritizing further diagnostic evaluation.
-> This is not just a classification problem — it is a healthcare problem.  
-> The real objective is not prediction accuracy, but **reducing missed diagnoses**.
+Reproduced by [`notebooks/aq10_screening_analysis.ipynb`](notebooks/aq10_screening_analysis.ipynb).
 
+> The label is an **AQ-10 screening result, not a clinical diagnosis**. Nothing here is a diagnostic tool.
 
-Why This Matters
-Early ASD detection is critical for improving long-term outcomes. However:
-Many cases remain undiagnosed or significantly delayed
-Screening tools must balance sensitivity and specificity
-Missing positive cases (false negatives) carries real clinical consequences
-This project prioritizes recall over raw accuracy — reflecting how clinical screening tools should be evaluated.
+## 1. The label is the scoring rule
 
+| AQ-10 score | 0–6 | 7–10 |
+|---|---|---|
+| Labelled ASD = NO | 515 | 0 |
+| Labelled ASD = YES | 0 | 189 |
 
-Dataset
-Property	Value
-Total samples	800
-Features	21 (behavioral scores, demographics, prior screening results)
-Target	ASD classification (0 = No ASD, 1 = ASD)
-Class distribution	Non-ASD ~80% / ASD ~20%
-> The dataset is imbalanced by design — reflecting real-world ASD prevalence rates.
+`Class/ASD` = YES exactly when the item sum is ≥ 7 (704 of 704 rows). A depth-2 decision tree on the score reaches 100% cross-validated accuracy. Any model trained on the ten items is relearning a sum and threshold, so the high accuracies commonly reported on this dataset aren't evidence of autism detection.
 
+The earlier version of this project trained Decision Tree, Random Forest and XGBoost models (selected by accuracy) on a synthetic Kaggle derivative of this data. That approach has been replaced. See [Changes](#changes-from-the-earlier-version).
 
-ML Pipeline
+## 2. How short can the screen be?
 
-Raw Data
-   ↓
-Data Cleaning & Preprocessing
-   ↓
-Exploratory Data Analysis (EDA)
-   ↓
-Feature Engineering
-   ↓
-Model Training (Decision Tree → Random Forest → XGBoost)
-   ↓
-Evaluation (Recall-focused metrics)
-   ↓
-Threshold Optimization
+The reference standard is the full AQ-10 decision. For each short-form length, items are ranked and a cutoff is chosen **inside each training fold** to reach ≥ 95% sensitivity, then applied unchanged to the held-out fold. Stratified 5-fold CV ×10 repeats (50 test folds).
+
+![Short-form trade-off](reports/figures/short_form_tradeoff.png)
+
+| Items | Usual cutoff | Sensitivity | Specificity | PPV | NPV |
+|---|---|---|---|---|---|
+| 4 | ≥ 2 | 0.994 | 0.749 | 0.594 | 0.997 |
+| **5** (items 3, 4, 5, 6, 9) | **≥ 3** | **0.974** | **0.854** | 0.712 | 0.989 |
+| 6 | ≥ 4 | 0.956 | 0.889 | 0.769 | 0.983 |
+| 8 | ≥ 5 | 1.000 | 0.932 | 0.846 | 1.000 |
+| 10 (full AQ-10) | ≥ 7 | 1.000 | 1.000 | 1.000 | 1.000 |
+
+## 3. Do background factors predict a positive screen?
+
+Without any questionnaire items, logistic regression (class-weighted; preprocessing inside folds) reached:
+
+| Features | Mean ROC-AUC (5-fold ×10) |
+|---|---|
+| Age, sex, jaundice, family history, prior app use, ethnicity | 0.728 |
+| Same, without ethnicity | 0.618 |
+| Ethnicity only | 0.705 |
+
+Family history of autism (47.3% vs 23.8% screen-positive) and neonatal jaundice (40.6% vs 25.4%) were associated with higher screen-positive rates. **Most of the signal is ethnicity.** That most plausibly reflects who used the app and cultural differences in answering self-report items, a caution about AQ-10 fairness across groups rather than a usable predictor.
+
+## Limitations
+
+- **No diagnoses in the data**, so the AQ-10's own sensitivity and specificity against clinical assessment can't be estimated.
+- **Self-selected app users** with a 26.8% screen-positive rate, far above population prevalence. PPV/NPV don't transfer to clinical settings.
+- Short-form selection is cross-validated but **not externally validated**. Any short form would need testing against diagnostic assessment in a new sample.
+- Small ethnicity subgroups (several under 20 people; 95 not reported).
+
+## Reproduce
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+pytest
+jupyter nbconvert --to notebook --execute --inplace notebooks/aq10_screening_analysis.ipynb
 ```
----
-Models
-Model	Status
-Decision Tree	Baseline
-Random Forest	Improved baseline
-XGBoost	Planned — minority class optimization
----
-Current Results
-Metrics (Random Forest — baseline)
-Metric	Score
-Accuracy	0.80
-Precision (ASD class)	0.56
-Recall (ASD class)	0.53
-F1-score (ASD class)	0.54
-Confusion Matrix
+
+The UCI data (CC BY 4.0) is included in `data/raw/`, with provenance and checksum in [`data/README.md`](data/README.md). Tested with Python 3.13.
+
+## Repository layout
+
 ```
-                Predicted: No ASD    Predicted: ASD
-Actual: No ASD       109                  15
-Actual: ASD           17                  19
+data/raw/        UCI archive (CC BY 4.0) + data/README.md provenance
+notebooks/       analysis notebook (executed)
+reports/figures/ figures written by the notebook
+src/aq10.py      loader, item ranking, sensitivity-targeted cutoffs, fold-wise short-form CV
+tests/           pytest suite (metrics, cutoff selection, label rule, checksum)
 ```
-Key Insight
-While overall accuracy is 80%, the model currently misses 47% of true ASD cases (17 false negatives out of 36).
-> In a clinical screening context, false negatives are the critical failure mode.  
-> A missed diagnosis means delayed intervention — the highest-cost outcome.
-This highlights a core principle in healthcare ML:  
-Sensitivity (recall) must be prioritized over accuracy when detecting disease.
----
-Challenges
-Class imbalance — 80/20 non-ASD/ASD split causes model bias toward majority class
-Majority class dominance — high accuracy masks poor minority class performance
-Precision–recall trade-off — reducing false negatives increases false positives; the clinical context determines acceptable balance
----
-Planned Improvements
-[ ] Apply SMOTE to synthetically oversample the ASD minority class
-[ ] Lower decision threshold (0.3–0.35) to reduce false negatives
-[ ] Implement XGBoost with `scale_pos_weight` for imbalanced class handling
-[ ] Cross-validation with stratified folds to preserve class distribution
-[ ] Add SHAP feature importance for clinical interpretability and trust
-[ ] Hyperparameter tuning via GridSearchCV / RandomizedSearchCV
----
-Future Direction
-Integrate multimodal data (behavioral signals, structured clinical notes)
-Deploy as a real-time Streamlit screening dashboard for clinician use
-Add model interpretability layer (SHAP / LIME) for clinical transparency
-Evaluate fairness metrics across demographic subgroups
----
-What This Project Demonstrates
-End-to-end ML pipeline: data → model → clinical evaluation
-Handling imbalanced healthcare datasets
-Understanding clinical impact beyond standard metrics
-Ability to translate ML outputs into real-world health applications
----
-Tech Stack
-`Python` `scikit-learn` `pandas` `NumPy` `Matplotlib` `Seaborn` `imbalanced-learn (SMOTE)`
----
-Author
-Prince Kwarteng Amaning  
-MS Data Science (in progress) — University of Michigan–Dearborn  
-Background: Dentistry | Global Public Health | Healthcare Analytics
-Interested in building AI systems that improve early detection, reduce diagnostic gaps, and support clinical decision-making — particularly in underserved communities.
----
-License
-MIT License — open for educational and research use.
+
+## Changes from the earlier version
+
+The earlier notebook:
+- used a synthetic 800-row Kaggle file;
+- couldn't run top to bottom (undefined variables, a committed `SyntaxError`, cells run out of order);
+- swapped `Y_train`/`Y_test` in one split;
+- used a row `ID` as a feature;
+- fit encoders and SMOTE before cross-validation;
+- selected models by accuracy while the README claimed recall was prioritized;
+- described an 80/20 class split as "reflecting real-world prevalence" (adult autism prevalence is around 1–3%).
+
+It has been replaced entirely.
+
+## Data citation
+
+Thabtah, F. (2017). *Autism Screening Adult* [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5F019. Licensed CC BY 4.0.
+
+## Author
+
+Prince Kwarteng Amaning. MS Data Science, University of Michigan–Dearborn. Background in dentistry and public health.
+
+License: MIT (code). Data: CC BY 4.0 (Thabtah, 2017).
