@@ -1,6 +1,6 @@
 # AQ-10 Autism Screening Data: What Machine Learning Can and Can't Learn
 
-A re-analysis of the UCI *Autism Screening Adult* dataset (704 adults who completed the AQ-10 questionnaire). It finds that the dataset's ASD label **is** the questionnaire's scoring rule, so "predicting autism" from it is circular. It then asks two questions the data *can* answer: how short a screen can be without losing sensitivity, and whether background factors relate to a positive screen.
+A re-analysis of the UCI *Autism Screening Adult* dataset (704 AQ-10-Adult screening records from the ASDTests app, ages 17–64; 522 were self-completed, 87 were completed by a parent, relative, health care professional or other person, and 95 don't record who completed them). It finds that the dataset's ASD label **is** the questionnaire's scoring rule, so "predicting autism" from it is circular. It then asks two questions the data *can* answer: how short a screen can be without losing sensitivity, and whether background factors relate to a positive screen.
 
 Reproduced by [`notebooks/aq10_screening_analysis.ipynb`](notebooks/aq10_screening_analysis.ipynb).
 
@@ -48,7 +48,8 @@ Family history of autism (47.3% vs 23.8% screen-positive) and neonatal jaundice 
 - **No diagnoses in the data**, so the AQ-10's own sensitivity and specificity against clinical assessment can't be estimated.
 - **Self-selected app users** with a 26.8% screen-positive rate, far above population prevalence. PPV/NPV don't transfer to clinical settings.
 - Short-form selection is cross-validated but **not externally validated**. Any short form would need testing against diagnostic assessment in a new sample.
-- Small ethnicity subgroups (several under 20 people; 95 not reported).
+- Small ethnicity subgroups (several under 20 people; 95 not reported). The same 95 records also lack who completed the test, so "not reported" marks a data-collection gap rather than an ethnic group. Treat its contribution to the ethnicity result with caution.
+- **Not all records are self-reports by adults.** 87 were completed by someone else, and 18 respondents were aged 17, although the dataset is labelled "18 and more".
 
 ## Reproduce
 

@@ -55,3 +55,13 @@ class TestRealData:
         assert len(df) == 704
         assert (df["result"] == df[ITEMS].sum(axis=1)).all()
         assert (df["screen_positive"] == (df["result"] >= 7)).all()
+
+    def test_respondent_profile(self):
+        df = load_aq10(RAW)
+        relation = df["relation"].str.strip("' ")
+        assert (relation == "Self").sum() == 522
+        assert relation.isna().sum() == 95
+        assert relation.notna().sum() - 522 == 87
+        assert (relation.isna() == (df["ethnicity"] == "Not reported")).all()
+        assert df["age"].min() == 17 and df["age"].max() == 64
+        assert (df["age"] == 17).sum() == 18
