@@ -1,5 +1,7 @@
 # AQ-10 Autism Screening Data: What Machine Learning Can and Can't Learn
 
+[![CI](https://github.com/DexterAmaning/autism-screening-prediction/actions/workflows/ci.yml/badge.svg)](https://github.com/DexterAmaning/autism-screening-prediction/actions/workflows/ci.yml)
+
 A re-analysis of the UCI *Autism Screening Adult* dataset (704 AQ-10-Adult screening records from the ASDTests app, ages 17–64; 522 were self-completed, 87 were completed by a parent, relative, health care professional or other person, and 95 don't record who completed them). It finds that the dataset's ASD label **is** the questionnaire's scoring rule, so "predicting autism" from it is circular. It then asks two questions the data *can* answer: how short a screen can be without losing sensitivity, and whether background factors relate to a positive screen.
 
 Reproduced by [`notebooks/aq10_screening_analysis.ipynb`](notebooks/aq10_screening_analysis.ipynb).
@@ -63,6 +65,8 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/aq10_screening_ana
 
 The UCI data (CC BY 4.0) is included in `data/raw/`, with provenance and checksum in [`data/README.md`](data/README.md). Tested with Python 3.13.
 
+On every push, GitHub Actions runs the tests with network access blocked, static checks (pyflakes, compilation) and a full notebook re-execution; see [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+
 ## Repository layout
 
 ```
@@ -70,7 +74,7 @@ data/raw/        UCI archive (CC BY 4.0) + data/README.md provenance
 notebooks/       analysis notebook (executed)
 reports/figures/ figures written by the notebook
 src/aq10.py      loader, item ranking, sensitivity-targeted cutoffs, fold-wise short-form CV
-tests/           pytest suite (metrics, cutoff selection, label rule, checksum)
+tests/           pytest suite (metrics, cutoff selection, label rule, checksum, README-notebook consistency)
 ```
 
 ## Changes from the earlier version
